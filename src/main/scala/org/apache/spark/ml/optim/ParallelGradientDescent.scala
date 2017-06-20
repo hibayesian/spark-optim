@@ -29,7 +29,7 @@ class ParallelGradientDescent private[spark](private var gradient: Gradient, pri
   extends Optimizer with Logging {
 
   private var stepSize: Double = 1.0
-  private var numIterations: Int = 100
+  private var numIterations: Int = 1
   private var regParam: Double = 0.0
   private var convergenceTol: Double = 0.001
   private var aggregationDepth: Int = 2
@@ -47,7 +47,7 @@ class ParallelGradientDescent private[spark](private var gradient: Gradient, pri
   }
 
   /**
-    * Set the number of iterations for parallel SGD. Default 100.
+    * Set the number of iterations for parallel SGD. Default 1.
     */
   def setNumIterations(iters: Int): this.type = {
     require(iters >= 0,
