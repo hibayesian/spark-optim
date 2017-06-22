@@ -3,7 +3,7 @@ package org.apache.spark.ml.optim
 import breeze.linalg.norm
 import org.apache.spark.internal.Logging
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
-import org.apache.spark.mllib.optimization.Optimizer
+import org.apache.spark.mllib.optimization.{Gradient, Optimizer}
 import org.apache.spark.rdd.RDD
 
 import scala.collection.mutable.ArrayBuffer
@@ -19,7 +19,7 @@ import scala.collection.mutable.ArrayBuffer
   * @param gradient Gradient function to be used.
   * @param updater Updater to be used to update weights after every iteration.
   */
-class ParallelFtrl private[spark](private var gradient: FtrlGradient, private var updater: FtrlUpdater)
+class ParallelFtrl private[spark](private var gradient: Gradient, private var updater: PerCoordinateUpdater)
   extends Optimizer with Logging {
 
   private var alpha: Double = 0.01
@@ -104,7 +104,7 @@ class ParallelFtrl private[spark](private var gradient: FtrlGradient, private va
   }
 
   /**
-    * Set the number of partitions for parallel SGD.
+    * Set the number of partitions for parallel Ftrl.
     */
   def setNumPartitions(numPartitions: Int): this.type = {
     this.numPartitions = numPartitions
@@ -115,7 +115,7 @@ class ParallelFtrl private[spark](private var gradient: FtrlGradient, private va
     * Set the gradient function (of the loss function of one single data example)
     * to be used for parallel Ftrl.
     */
-  def setGradient(gradient: FtrlGradient): this.type = {
+  def setGradient(gradient: Gradient): this.type = {
     this.gradient = gradient
     this
   }
@@ -125,7 +125,7 @@ class ParallelFtrl private[spark](private var gradient: FtrlGradient, private va
     * The updater is responsible to perform the update from the regularization term as well,
     * and therefore determines what kind or regularization is used, if any.
     */
-  def setUpdater(updater: FtrlUpdater): this.type = {
+  def setUpdater(updater: PerCoordinateUpdater): this.type = {
     this.updater = updater
     this
   }
@@ -151,8 +151,8 @@ class ParallelFtrl private[spark](private var gradient: FtrlGradient, private va
 object ParallelFtrl extends Logging {
   def runFtrl(
       data: RDD[(Double, Vector)],
-      gradient: FtrlGradient,
-      updater: FtrlUpdater,
+      gradient: Gradient,
+      updater: PerCoordinateUpdater,
       alpha: Double,
       beta: Double,
       l1: Double,
