@@ -22,12 +22,17 @@ package org.apache.spark.ml.optim.configuration
   */
 object Solver extends Enumeration {
   type Solver = Value
-  val GradientDescent, ParallelGradientDescent, LBFGS = Value
+
+  val GradientDescent,
+      ParallelGradientDescent,
+      LBFGS,
+      ParallelFtrl = Value
 
   private[ml] def fromString(name: String): Solver = name match {
     case "sgd" | "SGD" => GradientDescent
     case "psgd" | "PSGD" => ParallelGradientDescent
     case "lbfgs" | "LBFGS" => LBFGS
+    case "pftrl" | "PFTRL" => ParallelFtrl
     case _ => throw new IllegalArgumentException(s"Did not recognize Solver name: $name")
   }
 }
