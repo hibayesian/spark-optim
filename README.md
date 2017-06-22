@@ -4,6 +4,7 @@ Spark-Optim is a library of scalable optimization algorithms based on Spark. It 
 # Highlight
 Currently, Spark-Optim provides following implementations.
  + Parallel Stochastic Gradient Descent [[reference]](http://research.cs.rutgers.edu/~lihong/pub/Zinkevich11Parallelized.pdf)
+ + Parallel Follow-the-regularized-leader [[reference]](https://www.eecs.tufts.edu/~dsculley/papers/ad-click-prediction.pdf)
 
 # Requirements
 Spark-Optim is built against Spark 2.1.1.
