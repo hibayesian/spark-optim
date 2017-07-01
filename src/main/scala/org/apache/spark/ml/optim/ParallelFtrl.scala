@@ -28,7 +28,7 @@ import scala.collection.mutable.ArrayBuffer
 /**
   * :: DeveloperApi ::
   * Class used to solve an online optimization problem using Follow-the-regularized-leader.
-  * It can give a good performance vs. sparsity tradeoff.
+  * It can give a good performance vs. sparsity trade-off.
   *
   * Reference: [Ad Click Prediction: a View from the Trenches](https://www.eecs.tufts.
   * edu/~dsculley/papers/ad-click-prediction.pdf)
@@ -41,15 +41,18 @@ class ParallelFtrl private[spark](private var gradient: Gradient, private var up
 
   private var alpha: Double = 0.01
   private var beta: Double = 1.0
-  private var l1: Double = 0.1
-  private var l2: Double = 1.0
+  private var lambda1: Double = 0.1
+  private var lambda2: Double = 1.0
   private var numIterations: Int = 1
   private var convergenceTol: Double = 0.001
   private var aggregationDepth: Int = 2
   private var numPartitions: Int = -1
 
   /**
-    * Set the alpha. Default 0.01.
+    * Set the hyper parameter alpha of learning rate.
+    * According to the reference, the optimal value of alpha can vary a fair bit depending on the features and dataset.
+    *
+    * Default 0.01.
     */
   def setAlpha(alpha: Double): this.type = {
     this.alpha = alpha
@@ -57,7 +60,8 @@ class ParallelFtrl private[spark](private var gradient: Gradient, private var up
   }
 
   /**
-    * Set the beta. Default 1.0.
+    * Set the hyper parameter beta of learning rate.
+    * According to the reference, the optimal value of beta is usually around 1. Default 1.0.
     */
   def setBeta(beta: Double): this.type = {
     this.beta = beta
@@ -65,18 +69,18 @@ class ParallelFtrl private[spark](private var gradient: Gradient, private var up
   }
 
   /**
-    * Set the l1. Default 0.1.
+    * Set the L1 regularization parameter lambda1. Default 0.1.
     */
-  def setL1(l1: Double): this.type = {
-    this.l1 = l1
+  def setLambda1(lambda1: Double): this.type = {
+    this.lambda1 = lambda1
     this
   }
 
   /**
-    * Set the l2. Default 1.0.
+    * Set the L2 regularization paramter lambda2. Default 1.0.
     */
-  def setL2(l2: Double): this.type = {
-    this.l2 = l2
+  def setLambda2(lambda2: Double): this.type = {
+    this.lambda2 = lambda2
     this
   }
 
@@ -148,14 +152,14 @@ class ParallelFtrl private[spark](private var gradient: Gradient, private var up
   }
 
   override def optimize(data: RDD[(Double, Vector)], initialWeights: Vector): Vector = {
-    val (weights, _) = ParallelFtrl.runFtrl(
+    val (weights, _) = ParallelFtrl.runParallelFtrl(
       data,
       gradient,
       updater,
       alpha,
       beta,
-      l1,
-      l2,
+      lambda1,
+      lambda2,
       initialWeights,
       numIterations,
       convergenceTol,
@@ -166,14 +170,14 @@ class ParallelFtrl private[spark](private var gradient: Gradient, private var up
 }
 
 object ParallelFtrl extends Logging {
-  def runFtrl(
+  def runParallelFtrl(
       data: RDD[(Double, Vector)],
       gradient: Gradient,
       updater: PerCoordinateUpdater,
       alpha: Double,
       beta: Double,
-      l1: Double,
-      l2: Double,
+      lambda1: Double,
+      lambda2: Double,
       initialWeights: Vector,
       numIterations: Int,
       convergenceTol: Double,
@@ -190,7 +194,7 @@ object ParallelFtrl extends Logging {
 
     // if no data, return initial weights to avoid NaNs
     if (numExamples == 0) {
-      logWarning("Ftrl.runFtrl returning initial weights, no data found")
+      logWarning("Ftrl.runParallelFtrl returning initial weights, no data found")
       return (initialWeights, stochasticLossHistory.toArray)
     }
 
@@ -212,9 +216,10 @@ object ParallelFtrl extends Logging {
           var z = Vectors.zeros(localWeights.size)
           var j = 1
           while (part.hasNext) {
-            val (label, vector) = part.next()
-            val (localGrad, localLoss) = gradient.compute(vector, label, localWeights)
-            val update = updater.compute(localWeights, localGrad, alpha, beta, l1, l2, n, z)
+            val (label, features) = part.next()
+            val activeIndices = features.toSparse.indices
+            val (localGrad, localLoss) = gradient.compute(features, label, localWeights)
+            val update = updater.compute(activeIndices, localWeights, localGrad, alpha, beta, lambda1, lambda2, n, z)
             localWeights = update._1
             localRegVal = update._2
             n = update._3
@@ -258,3 +263,4 @@ object ParallelFtrl extends Logging {
     solutionVecDiff < convergenceTol * Math.max(norm(currentBDV), 1.0)
   }
 }
+

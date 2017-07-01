@@ -18,13 +18,15 @@
 package org.apache.spark.ml.optim.configuration
 
 /**
- * Enum to select the algorithm
- */
+  * Enum to select the algorithm
+  */
 object Algo extends Enumeration {
   type Algo = Value
-  val Classification, Regression = Value
+  val BinaryClassification, MultinomialClassification, Classification, Regression = Value
 
   private[ml] def fromString(name: String): Algo = name match {
+    case "binary classification" | "Binary Classification" => BinaryClassification
+    case "multinomial classification" | "Multinomial Classification" => MultinomialClassification
     case "classification" | "Classification" => Classification
     case "regression" | "Regression" => Regression
     case _ => throw new IllegalArgumentException(s"Did not recognize Algo name: $name")
